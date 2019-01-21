@@ -1,0 +1,46 @@
+@isTest
+private class OppHelperTestClass {
+    static testmethod void testRollupOppContacts(){
+       
+        //creating test data        
+        contact Bc = new contact(
+        FirstName='Test',
+        LastName='Billing Contact');
+        insert Bc;
+        
+        contact Pc = new contact(
+        FirstName='Test',
+        LastName='Primary Contact');
+        insert Pc; 
+                
+        Account acc = new Account(
+        Name = 'Test Account',
+        Business_Status__c= 'Open',
+        BillingContact__c= Bc.id,
+        MainContact__c = Pc.id);
+        insert acc;
+       	     
+        Opportunity opp = new Opportunity(
+        Name = 'TestOpportunity',
+        CloseDate = Date.today(),
+        Type = 'New Member',
+        BillingContact__c =  acc.BillingContact__c,
+        PrimaryContact__c= acc.MainContact__c,
+        Main_Contact__c = acc.MainContact__c,
+        StageName = 'New',
+        AccountId= acc.id);
+        insert opp;
+        
+        Opphelper oh = new OppHelper( new ApexPages.StandardController(opp));
+            oh.opp = opp;
+        
+        // calling the Apex method
+        Test.StartTest();
+        oh.rollupOppContacts();
+        Test.stopTest();
+        
+        // validating the data
+        Opportunity validOpp = [SELECT id, Name FROM OPPORTUNITY WHERE ID=: opp.id];
+        system.assertEquals('TestOpportunity', validOpp.Name);
+    }
+}

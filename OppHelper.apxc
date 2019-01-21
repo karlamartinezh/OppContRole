@@ -1,0 +1,78 @@
+public with sharing class OppHelper {
+	public Opportunity opp; 
+    
+    public OppHelper( ApexPages.StandardController stdController ){ 
+        opp = ( Opportunity )stdController.getRecord(); 
+    }
+    
+    public void rollupOppContacts(){ 
+        system.debug('IM AT OPPHELPER');
+        OppHelper.rollupOppContactsFuture( opp.Id ); 
+    } 
+    
+    @future 
+    public static void rollupOppContactsFuture( Id oppId ) { 
+        system.debug('Inside Roll Up');
+        string primary;
+        string billing;
+        string primaryContact;
+        string billingContact; 
+        boolean flag=false;
+        boolean flag2= false;
+        
+        list<Opportunity> updateOpp = new List<Opportunity>();
+        
+        Contact[] contactListPrimary = [ SELECT Id,Name FROM Contact 
+                                 WHERE Id IN ( SELECT ContactId FROM OpportunityContactRole 
+                                              WHERE OpportunityId = :oppId and Role=:'Primary') ];
+        
+        Contact[] contactListBilling= [ SELECT Id,Name FROM Contact 
+                                 		WHERE Id IN ( SELECT ContactId FROM OpportunityContactRole 
+                                              WHERE OpportunityId = :oppId and Role=:'Billing') ];
+                
+      	List<Opportunity> opp = [ SELECT Id,PrimaryContact__c,BillingContact__c FROM Opportunity 
+                           WHERE Id = :oppId ];
+
+        system.debug(opp.size());
+           
+        if(opp.size()>0){
+            for(Opportunity newOpp :  opp){
+               primary= newOpp.PrimaryContact__c; 
+               billing = newOpp.BillingContact__c;
+            }
+        }
+        
+        if(contactListPrimary.size()>0){
+           for(Contact contactP : contactListPrimary ){ 
+                       primaryContact=contactP.id; // new Primary contact
+               }
+       	  }
+        
+        if(contactListBilling.size()>0){
+               for(Contact contactB : contactListBilling){
+                  billingContact = contactB.id; // new Billing Contact
+           }
+        }
+        
+       
+        if(opp.size() >0 && ( contactListPrimary.size()>0 || contactListBilling.size()>0 )){
+            for(opportunity nOpp :  opp){
+                if(primary != primaryContact){
+                     system.debug('differents P.C');
+                    nOpp.PrimaryContact__c= primaryContact;
+                    flag=true;
+                } if(billing != billingContact){
+                    system.debug('differents B.C');
+                    nOpp.BillingContact__c = billingContact;
+                    flag2 = true;
+                }
+                updateOpp.add(nOpp);
+            }
+        }
+        //If any change happened so update 
+        if(flag == true || flag2 == true){
+            system.debug('inside updateOpp');
+            update updateOpp;
+        } 
+    } 
+}
